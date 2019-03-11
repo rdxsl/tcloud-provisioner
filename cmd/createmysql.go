@@ -23,15 +23,12 @@ import (
 // createCmd represents the create command
 var createMysqlCmd = &cobra.Command{
 	Use:   "create",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "create a MySQL DB in Tencent Cloud",
+	Long: `create a MySQL DB in Tencent Cloud. The configuration is set in the following dir
+				 ~/.tcloud-provisioner
+	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("create called")
+		fmt.Println("create mysql called")
 	},
 }
 

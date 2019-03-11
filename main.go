@@ -14,7 +14,7 @@
 
 package main
 
-import "go.riotgames.com/jxie/tcloud-auto/cmd"
+import "github.com/xmanjack/tcloud-provisioner/cmd"
 
 func main() {
 	cmd.Execute()
