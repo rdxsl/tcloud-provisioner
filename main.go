@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/xmanjack/tcloud-provisioner/cmd"
+import "github.com/rdxsl/tcloud-provisioner/cmd"
 
 func main() {
 	cmd.Execute()

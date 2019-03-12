@@ -17,8 +17,12 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/rdxsl/tcloud-provisioner/tencent-cloud/mysql"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+var tcloudEnvName string
 
 // createCmd represents the create command
 var createMysqlCmd = &cobra.Command{
@@ -28,12 +32,22 @@ var createMysqlCmd = &cobra.Command{
 				 ~/.tcloud-provisioner
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("create mysql called")
+		fmt.Println("config for tcloud", tcloudEnvName)
+		viper.SetConfigName("mysql")
+		viper.AddConfigPath("./conf/" + tcloudEnvName)
+		err := viper.ReadInConfig()
+		if err != nil { // Handle errors reading the config file
+			fmt.Println(fmt.Errorf("Fatal error config file: %s \n", err))
+		}
+		fmt.Println(tcloudEnvName)
+		fmt.Println(string(viper.Get("port").(string)))
+		mysql.Create()
 	},
 }
 
 func init() {
 	mysqlCmd.AddCommand(createMysqlCmd)
+	createMysqlCmd.Flags().StringVarP(&tcloudEnvName, "env", "e", "", "sub directory inside of ./conf what has a region's config files")
 
 	// Here you will define your flags and configuration settings.
 
