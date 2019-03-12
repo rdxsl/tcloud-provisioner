@@ -38,14 +38,15 @@ var createMysqlCmd = &cobra.Command{
 		err := viper.ReadInConfig()
 		if err != nil { // Handle errors reading the config file
 			fmt.Println(fmt.Errorf("Fatal error config file: %s \n", err))
+		} else {
+			var tm tcloudmysql.TcloudMySQL
+			tm.Instance = int64(viper.Get("Instance").(float64))
+			tm.Memory = int64(viper.Get("Memory").(float64))
+			tm.Volume = int64(viper.Get("Volume").(float64))
+			tm.Region = string(viper.Get("Region").(string))
+			tm.Zone = string(viper.Get("Zone").(string))
+			tm.Create()
 		}
-		var tm tcloudmysql.TcloudMySQL
-		tm.Instance = int64(viper.Get("Instance").(float64))
-		tm.Memory = int64(viper.Get("Memory").(float64))
-		tm.Volume = int64(viper.Get("Volume").(float64))
-		tm.Region = string(viper.Get("Region").(string))
-		tm.Zone = string(viper.Get("Zone").(string))
-		tm.Create()
 	},
 }
 
