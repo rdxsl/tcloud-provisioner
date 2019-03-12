@@ -29,7 +29,7 @@ var createMysqlCmd = &cobra.Command{
 	Use:   "create",
 	Short: "create a MySQL DB in Tencent Cloud",
 	Long: `create a MySQL DB in Tencent Cloud. The configuration is set in the following dir
-				 ~/.tcloud-provisioner
+	~/.tcloud-provisioner
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("config for tcloud", tcloudEnvName)
