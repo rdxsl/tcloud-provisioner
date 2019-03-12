@@ -17,7 +17,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/rdxsl/tcloud-provisioner/tencent-cloud/mysql"
+	tcloudmysql "github.com/rdxsl/tcloud-provisioner/tencent-cloud/mysql"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -32,16 +32,20 @@ var createMysqlCmd = &cobra.Command{
 	~/.tcloud-provisioner
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("config for tcloud", tcloudEnvName)
+		fmt.Println("reading tcloud mysql config from ./conf/" + tcloudEnvName)
 		viper.SetConfigName("mysql")
 		viper.AddConfigPath("./conf/" + tcloudEnvName)
 		err := viper.ReadInConfig()
 		if err != nil { // Handle errors reading the config file
 			fmt.Println(fmt.Errorf("Fatal error config file: %s \n", err))
 		}
-		fmt.Println(tcloudEnvName)
-		fmt.Println(string(viper.Get("port").(string)))
-		mysql.Create()
+		var tm tcloudmysql.TcloudMySQL
+		tm.Instance = int64(viper.Get("Instance").(float64))
+		tm.Memory = int64(viper.Get("Memory").(float64))
+		tm.Volume = int64(viper.Get("Volume").(float64))
+		tm.Region = string(viper.Get("Region").(string))
+		tm.Zone = string(viper.Get("Zone").(string))
+		tm.Create()
 	},
 }
 
