@@ -5,6 +5,12 @@
       "mode": "debug",
       "cwd": "${env.GOPATH}/src/github.com/rdxsl/tcloud-provisioner",
       "args": ["mysql", "create", "-e", "example"]
+    },
+    {
+      "name": "redis create debug",
+      "mode": "debug",
+      "cwd": "${env.GOPATH}/src/github.com/rdxsl/tcloud-provisioner",
+      "args": ["redis", "create", "-e", "./conf/example/redis.json"]
     }
   ]
 }

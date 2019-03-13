@@ -35,7 +35,6 @@ func NewCredential() (*common.Credential, *profile.ClientProfile) {
 }
 
 func (tr TcloudRedis) Create() {
-	fmt.Println("test")
 	credential, cpf := NewCredential()
 	client, _ := redis.NewClient(credential, tr.Region, cpf)
 	request := redis.NewCreateInstancesRequest()
@@ -59,6 +58,15 @@ func (tr TcloudRedis) Create() {
 	//You don't need to change BillingMode and Period for intl site
 	request.BillingMode = common.Int64Ptr(0)
 	request.Period = common.Uint64Ptr(1)
+
+	// // VPC's ID
+	request.VpcId = common.StringPtr("vpc-gfehxte9")
+	// // VPC's subnet ID
+	request.SubnetId = common.StringPtr("subnet-fiyvufly")
+	// security groups' ID
+	// var SGroup = []string {"sg-clygup2w"}
+	// request.SecurityGroupIdList = common.StringPtrs(SGroup)
+
 	response, err := client.CreateInstances(request)
 
 	if _, ok := err.(*errors.TencentCloudSDKError); ok {
