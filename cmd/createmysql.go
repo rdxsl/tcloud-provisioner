@@ -24,6 +24,47 @@ import (
 
 var tcloudEnvName string
 
+func mysqlViperParseConfig() error {
+	viper.SetConfigName("mysql")
+	viper.AddConfigPath("./conf/" + tcloudEnvName)
+	err := viper.ReadInConfig()
+	return err
+}
+
+func parseConfig(tm *tcloudmysql.TcloudMySQL) error {
+	switch viper.Get("Instance").(type) {
+	case float64:
+		tm.Instance = int64(viper.Get("Instance").(float64))
+	default:
+		return fmt.Errorf("mysql config needs to have 'Instance' with type 'int' without quotes, currently we have %+v\n", viper.Get("Instance"))
+	}
+	switch viper.Get("Memory").(type) {
+	case float64:
+		tm.Memory = int64(viper.Get("Memory").(float64))
+	default:
+		return fmt.Errorf("mysql config needs to have 'Memory' with type 'int' without quotes, currently we have %+v\n", viper.Get("Memory"))
+	}
+	switch viper.Get("Volume").(type) {
+	case float64:
+		tm.Volume = int64(viper.Get("Volume").(float64))
+	default:
+		return fmt.Errorf("mysql config needs to have 'Volume' with type 'int' without quotes, currently we have %+v\n", viper.Get("Volume"))
+	}
+	switch viper.Get("Region").(type) {
+	case string:
+		tm.Region = string(viper.Get("Region").(string))
+	default:
+		return fmt.Errorf("mysql config needs to have 'Region' with type 'string' with quotes, currently we have %+v\n", viper.Get("Region"))
+	}
+	switch viper.Get("Zone").(type) {
+	case string:
+		tm.Zone = string(viper.Get("Zone").(string))
+	default:
+		return fmt.Errorf("mysql config needs to have 'Zone' with type 'string' with quotes, currently we have %+v\n", viper.Get("Zone"))
+	}
+	return nil
+}
+
 // createCmd represents the create command
 var createMysqlCmd = &cobra.Command{
 	Use:   "create",
@@ -33,19 +74,17 @@ var createMysqlCmd = &cobra.Command{
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("reading tcloud mysql config from ./conf/" + tcloudEnvName)
-		viper.SetConfigName("mysql")
-		viper.AddConfigPath("./conf/" + tcloudEnvName)
-		err := viper.ReadInConfig()
+		err := mysqlViperParseConfig()
 		if err != nil { // Handle errors reading the config file
 			fmt.Println(fmt.Errorf("Fatal error config file: %s \n", err))
 		} else {
 			var tm tcloudmysql.TcloudMySQL
-			tm.Instance = int64(viper.Get("Instance").(float64))
-			tm.Memory = int64(viper.Get("Memory").(float64))
-			tm.Volume = int64(viper.Get("Volume").(float64))
-			tm.Region = string(viper.Get("Region").(string))
-			tm.Zone = string(viper.Get("Zone").(string))
-			tm.Create()
+			err := parseConfig(&tm)
+			if err == nil {
+				tm.Create()
+			} else {
+				fmt.Println(err)
+			}
 		}
 	},
 }

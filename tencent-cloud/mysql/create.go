@@ -6,17 +6,20 @@ import (
 	"os"
 
 	cdb "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cdb/v20170320"
-	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
+	common "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/errors"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 )
 
 type TcloudMySQL struct {
-	Region, Zone             string
-	Instance, Memory, Volume int64
+	Region   string
+	Zone     string
+	Instance int64
+	Memory   int64
+	Volume   int64
 }
 
-func (tm TcloudMySQL) Create() {
+func NewCredential() (*common.Credential, *profile.ClientProfile) {
 	credential := common.NewCredential(
 		os.Getenv("TENCENTCLOUD_SECRET_ID"),
 		os.Getenv("TENCENTCLOUD_SECRET_KEY"),
@@ -24,10 +27,16 @@ func (tm TcloudMySQL) Create() {
 
 	cpf := profile.NewClientProfile()
 	cpf.HttpProfile.ReqMethod = "POST"
-	cpf.HttpProfile.ReqTimeout = 10
+	cpf.HttpProfile.ReqTimeout = 60
 	cpf.SignMethod = "HmacSHA1"
 
+	return credential, cpf
+}
+
+func (tm TcloudMySQL) Create() {
+	credential, cpf := NewCredential()
 	client, _ := cdb.NewClient(credential, tm.Region, cpf)
+
 	request := cdb.NewCreateDBInstanceHourRequest()
 	request.GoodsNum = common.Int64Ptr(tm.Instance)
 	request.Memory = common.Int64Ptr(tm.Memory)
@@ -40,9 +49,9 @@ func (tm TcloudMySQL) Create() {
 		return
 	}
 	// unexpected errors
-	// if err != nil {
-	// 	panic(err)
-	// }
+	if err != nil {
+		panic(err)
+	}
 	b, _ := json.Marshal(response.Response)
 	fmt.Printf("%s", b)
 }
