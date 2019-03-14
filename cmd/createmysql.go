@@ -15,54 +15,30 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 
+	"github.com/pkg/errors"
 	tcloudmysql "github.com/rdxsl/tcloud-provisioner/tencent-cloud/mysql"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
-var tcloudEnvName string
+var mysqlConfigPath string
 
-func mysqlViperParseConfig() error {
-	viper.SetConfigName("mysql")
-	viper.AddConfigPath("./conf/" + tcloudEnvName)
-	err := viper.ReadInConfig()
-	return err
-}
+func mysqlViperParseConfig() (*tcloudmysql.TcloudMySQL, error) {
 
-func parseConfig(tm *tcloudmysql.TcloudMySQL) error {
-	switch viper.Get("Instance").(type) {
-	case float64:
-		tm.Instance = int64(viper.Get("Instance").(float64))
-	default:
-		return fmt.Errorf("mysql config needs to have 'Instance' with type 'int' without quotes, currently we have %+v\n", viper.Get("Instance"))
+	bytes, err := ioutil.ReadFile(mysqlConfigPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error reading %s file", mysqlConfigPath)
 	}
-	switch viper.Get("Memory").(type) {
-	case float64:
-		tm.Memory = int64(viper.Get("Memory").(float64))
-	default:
-		return fmt.Errorf("mysql config needs to have 'Memory' with type 'int' without quotes, currently we have %+v\n", viper.Get("Memory"))
+
+	var tm tcloudmysql.TcloudMySQL
+	err = json.Unmarshal(bytes, &tm)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error marshaling %s into TcloudMySQL struct", mysqlConfigPath)
 	}
-	switch viper.Get("Volume").(type) {
-	case float64:
-		tm.Volume = int64(viper.Get("Volume").(float64))
-	default:
-		return fmt.Errorf("mysql config needs to have 'Volume' with type 'int' without quotes, currently we have %+v\n", viper.Get("Volume"))
-	}
-	switch viper.Get("Region").(type) {
-	case string:
-		tm.Region = string(viper.Get("Region").(string))
-	default:
-		return fmt.Errorf("mysql config needs to have 'Region' with type 'string' with quotes, currently we have %+v\n", viper.Get("Region"))
-	}
-	switch viper.Get("Zone").(type) {
-	case string:
-		tm.Zone = string(viper.Get("Zone").(string))
-	default:
-		return fmt.Errorf("mysql config needs to have 'Zone' with type 'string' with quotes, currently we have %+v\n", viper.Get("Zone"))
-	}
-	return nil
+	return &tm, nil
 }
 
 // createCmd represents the create command
@@ -73,25 +49,21 @@ var createMysqlCmd = &cobra.Command{
 	~/.tcloud-provisioner
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("reading tcloud mysql config from ./conf/" + tcloudEnvName)
-		err := mysqlViperParseConfig()
+		fmt.Printf("reading tcloud mysql config from %s\n", mysqlConfigPath)
+		tm, err := mysqlViperParseConfig()
 		if err != nil { // Handle errors reading the config file
 			fmt.Println(fmt.Errorf("Fatal error config file: %s \n", err))
-		} else {
-			var tm tcloudmysql.TcloudMySQL
-			err := parseConfig(&tm)
-			if err == nil {
-				tm.Create()
-			} else {
-				fmt.Println(err)
-			}
+			return
 		}
+
+		// TODO(jbennett): this function should return an error and log it
+		tm.Create()
 	},
 }
 
 func init() {
 	mysqlCmd.AddCommand(createMysqlCmd)
-	createMysqlCmd.Flags().StringVarP(&tcloudEnvName, "env", "e", "", "sub directory inside of ./conf what has a region's config files")
+	createMysqlCmd.Flags().StringVarP(&mysqlConfigPath, "env", "e", "", "path to mysql config file")
 
 	// Here you will define your flags and configuration settings.
 
