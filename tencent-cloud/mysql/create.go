@@ -12,11 +12,12 @@ import (
 )
 
 type TcloudMySQL struct {
-	Region   string
-	Zone     string
-	Instance int64
-	Memory   int64
-	Volume   int64
+	InstanceName string
+	Region       string
+	Zone         string
+	Instance     int64
+	Memory       int64
+	Volume       int64
 }
 
 func NewCredential() (*common.Credential, *profile.ClientProfile) {
@@ -34,8 +35,20 @@ func NewCredential() (*common.Credential, *profile.ClientProfile) {
 }
 
 func (tm TcloudMySQL) Create() {
+
+	// Init client
 	credential, cpf := NewCredential()
 	client, _ := cdb.NewClient(credential, tm.Region, cpf)
+
+	exists, err := checkInstanceExists(client, tm.InstanceName)
+	if err != nil {
+		fmt.Println("Failed to check if instances already exist:", err)
+		os.Exit(1)
+	}
+	if exists {
+		fmt.Printf("[INFO] %#v already exists\n", tm.InstanceName)
+		os.Exit(0)
+	}
 
 	request := cdb.NewCreateDBInstanceHourRequest()
 	request.GoodsNum = common.Int64Ptr(tm.Instance)
@@ -54,4 +67,24 @@ func (tm TcloudMySQL) Create() {
 	}
 	b, _ := json.Marshal(response.Response)
 	fmt.Printf("%s", b)
+
+	fmt.Printf("[INFO] %#v successfully created\n", tm.InstanceName)
+	os.Exit(0)
+}
+
+func checkInstanceExists(client *cdb.Client, name string) (bool, error) {
+	req := cdb.NewDescribeDBInstancesRequest()
+	resp, err := client.DescribeDBInstances(req)
+	if err != nil {
+		return false, err
+	}
+	for _, item := range resp.Response.Items {
+		if item.InstanceName == nil {
+			continue
+		}
+		if *item.InstanceName == name {
+			return true, nil
+		}
+	}
+	return false, nil
 }
