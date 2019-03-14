@@ -30,13 +30,14 @@ func redisParseConfig(tm *tcloudredis.TcloudRedis) error {
 	// Open our jsonFile
 	jsonFile, err := os.Open(redisConfName)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-
+	byteValue, err := ioutil.ReadAll(jsonFile)
+	if err != nil {
+		return err
+	}
 	return json.Unmarshal(byteValue, tm)
 }
 
@@ -54,10 +55,17 @@ to quickly create a Cobra application.`,
 		var tr tcloudredis.TcloudRedis
 		err := redisParseConfig(&tr)
 
-		if err == nil {
-			tr.Create()
-		} else {
-			fmt.Println(err)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+		err = tr.Create()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			// we might want to define exit code later
+			os.Exit(2)
 		}
 	},
 }

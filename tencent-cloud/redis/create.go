@@ -43,7 +43,11 @@ func NewCredential() (*common.Credential, *profile.ClientProfile) {
 
 func (tr TcloudRedis) Create() error {
 	credential, cpf := NewCredential()
-	client, _ := redis.NewClient(credential, tr.Region, cpf)
+	client, err := redis.NewClient(credential, tr.Region, cpf)
+	if err != nil {
+		fmt.Printf("new client err: %s\n", err)
+		return err
+	}
 	request := redis.NewCreateInstancesRequest()
 	//Availability Zone ID
 	//Please see the comment on the bottom for different Availability Zone ID
