@@ -8,4 +8,4 @@ Run `make` to run unit tests and compile the binary tool.
 
 ## Install Instructions
 
-Run `go get -u github.com/rdxsl/tcloud-provisioner` and make sure `$GOPATH/bin` is on your `$PATH`
+Run `go install github.com/rdxsl/tcloud-provisioner` and make sure `$GOPATH/bin` is on your `$PATH`
