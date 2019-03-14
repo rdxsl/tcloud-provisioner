@@ -7,24 +7,26 @@ import (
 
 	redis "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/redis/v20180412"
 
+	"github.com/pkg/errors"
 	common "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
-	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/errors"
+	tencentErrors "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/errors"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 )
 
-type TcloudRedis struct {
-	Region      string `json:"region"`
-	Instance    uint64 `json:"instance"`
-	ZoneId      uint64 `json:"zoneid"`
-	TypeId      uint64 `json:"typeid"`
-	MemSize     uint64 `json:"memsize"`
-	Password    string `json:"password"`
-	ProjectId   int64  `json:"projectid"`
-	Vport       uint64 `json:"vport"`
-	BillingMode int64  `json:"billingmode"`
-	Period      uint64 `json:"billperiod"`
-	VpcId       string `json:"vpcid"`
-	SubnetId    string `json:"subnetid"`
+type TCloudRedis struct {
+	Region       string `json:"region"`
+	InstanceName string `json:"instanceName"`
+	Instance     uint64 `json:"instance"`
+	ZoneId       uint64 `json:"zoneid"`
+	TypeId       uint64 `json:"typeid"`
+	MemSize      uint64 `json:"memsize"`
+	Password     string `json:"password"`
+	ProjectId    int64  `json:"projectid"`
+	Vport        uint64 `json:"vport"`
+	BillingMode  int64  `json:"billingmode"`
+	Period       uint64 `json:"billperiod"`
+	VpcId        string `json:"vpcid"`
+	SubnetId     string `json:"subnetid"`
 }
 
 func NewCredential() (*common.Credential, *profile.ClientProfile) {
@@ -41,13 +43,22 @@ func NewCredential() (*common.Credential, *profile.ClientProfile) {
 	return credential, cpf
 }
 
-func (tr TcloudRedis) Create() error {
+func (tr TCloudRedis) Create() (exists bool, err error) {
+
+	// Init client
 	credential, cpf := NewCredential()
 	client, err := redis.NewClient(credential, tr.Region, cpf)
 	if err != nil {
-		fmt.Printf("new client err: %s\n", err)
-		return err
+		return false, errors.Wrap(err, "new client error")
 	}
+
+	// Check if instance with the same name already exists
+	exists, err = checkInstanceExists(client, tr.InstanceName)
+	if err != nil || exists {
+		return exists, errors.Wrap(err, "failed to check instances")
+	}
+
+	// Create redis
 	request := redis.NewCreateInstancesRequest()
 	//Availability Zone ID
 	//Please see the comment on the bottom for different Availability Zone ID
@@ -79,17 +90,38 @@ func (tr TcloudRedis) Create() error {
 	// request.SecurityGroupIdList = common.StringPtrs(SGroup)
 
 	response, err := client.CreateInstances(request)
-
-	if _, ok := err.(*errors.TencentCloudSDKError); ok {
-		fmt.Printf("An API error has returned: %s\n", err)
-		return err
+	if _, ok := err.(*tencentErrors.TencentCloudSDKError); ok {
+		return false, errors.Wrap(err, "API error")
 	}
-	// unexpected errors
 	if err != nil {
-		fmt.Printf("unexpected errors happend: %s\n", err)
-		return err
+		return false, err
 	}
-	b, _ := json.Marshal(response.Response)
-	fmt.Printf("%s\n", b)
-	return nil
+
+	// Parse response
+	b, err := json.Marshal(response.Response)
+	if err != nil {
+		// Want to return nil right here, because the instance has already
+		// been successfully created
+		fmt.Println(err)
+		return false, nil
+	}
+	fmt.Printf("%v", string(b))
+	return false, nil
+}
+
+func checkInstanceExists(client *redis.Client, name string) (bool, error) {
+	req := redis.NewDescribeInstancesRequest()
+	resp, err := client.DescribeInstances(req)
+	if err != nil {
+		return false, err
+	}
+	for _, item := range resp.Response.InstanceSet {
+		if item.InstanceName == nil {
+			continue
+		}
+		if *item.InstanceName == name {
+			return true, nil
+		}
+	}
+	return false, nil
 }

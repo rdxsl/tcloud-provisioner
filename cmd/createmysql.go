@@ -50,8 +50,6 @@ var createMysqlCmd = &cobra.Command{
 	~/.tcloud-provisioner
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("reading tcloud mysql config from %#v\n", mysqlConfigPath)
-
 		tm, err := mysqlViperParseConfig()
 		if err != nil {
 			fmt.Println("Fatal error config file:", err)
