@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	tcloudmysql "github.com/rdxsl/tcloud-provisioner/tencent-cloud/mysql"
@@ -49,20 +50,30 @@ var createMysqlCmd = &cobra.Command{
 	~/.tcloud-provisioner
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("reading tcloud mysql config from %s\n", mysqlConfigPath)
+		fmt.Printf("reading tcloud mysql config from %#v\n", mysqlConfigPath)
+
 		tm, err := mysqlViperParseConfig()
-		if err != nil { // Handle errors reading the config file
-			fmt.Println(fmt.Errorf("Fatal error config file: %s \n", err))
-			return
+		if err != nil {
+			fmt.Println("Fatal error config file:", err)
+			os.Exit(1)
 		}
 
-		// TODO(jbennett): this function should return an error and log it
-		tm.Create()
+		exists, err := tm.Create()
+		if err != nil {
+			fmt.Println("[ERROR] Failed to create MySQL:", err)
+			os.Exit(1)
+		}
+		if exists {
+			fmt.Printf("[INFO] MySQL instance %#v already exists\n", tm.InstanceName)
+			return
+		}
+		fmt.Printf("[INFO] MySQL instance %#v successfully created\n", tm.InstanceName)
 	},
 }
 
 func init() {
 	mysqlCmd.AddCommand(createMysqlCmd)
+
 	createMysqlCmd.Flags().StringVarP(&mysqlConfigPath, "env", "e", "", "path to mysql config file")
 
 	// Here you will define your flags and configuration settings.
