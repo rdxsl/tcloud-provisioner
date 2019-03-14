@@ -77,11 +77,14 @@ func (tm TcloudMySQL) Create() (bool, error) {
 }
 
 func checkInstanceExists(client *cdb.Client, name string) (bool, error) {
+	// https://intl.cloud.tencent.com/document/api/236/1266
 	req := cdb.NewDescribeDBInstancesRequest()
+	req.Limit = common.Uint64Ptr(100)
 	resp, err := client.DescribeDBInstances(req)
 	if err != nil {
 		return false, err
 	}
+
 	for _, item := range resp.Response.Items {
 		if item.InstanceName == nil {
 			continue

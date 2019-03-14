@@ -110,11 +110,14 @@ func (tr TCloudRedis) Create() (exists bool, err error) {
 }
 
 func checkInstanceExists(client *redis.Client, name string) (bool, error) {
+	// https://intl.cloud.tencent.com/document/api/239/1384
 	req := redis.NewDescribeInstancesRequest()
+	req.Limit = common.Uint64Ptr(100)
 	resp, err := client.DescribeInstances(req)
 	if err != nil {
 		return false, err
 	}
+
 	for _, item := range resp.Response.InstanceSet {
 		if item.InstanceName == nil {
 			continue
