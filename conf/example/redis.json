@@ -1,0 +1,14 @@
+{
+  "region": "na-siliconvalley",
+  "instance": 1,
+  "zoneid":150001,
+  "typeid":2,
+  "memsize":1024,
+  "password":"somepass1",
+  "projectid":0,
+  "vport":6379,
+  "billingmode":0,
+  "billperiod":1,
+  "vpcid":" ",
+  "subnetid":" "
+}

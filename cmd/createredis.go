@@ -15,10 +15,31 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 
+	tcloudredis "github.com/rdxsl/tcloud-provisioner/tencent-cloud/redis"
 	"github.com/spf13/cobra"
 )
+
+var redisConfName string
+
+func redisParseConfig(tm *tcloudredis.TcloudRedis) error {
+	// Open our jsonFile
+	jsonFile, err := os.Open(redisConfName)
+	if err != nil {
+		return err
+	}
+	// defer the closing of our jsonFile so that we can parse it later on
+	defer jsonFile.Close()
+	byteValue, err := ioutil.ReadAll(jsonFile)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(byteValue, tm)
+}
 
 // createCmd represents the create command
 var createRedisCmd = &cobra.Command{
@@ -31,12 +52,29 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("create called")
+		var tr tcloudredis.TcloudRedis
+		err := redisParseConfig(&tr)
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+		err = tr.Create()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			// we might want to define exit code later
+			os.Exit(2)
+		}
 	},
 }
 
 func init() {
 	redisCmd.AddCommand(createRedisCmd)
+	// createRedisCmd.Flags().StringVarP(&redisConfName, "conf", "c", "", "location of the redis conf json file")
+
+	createRedisCmd.Flags().StringVarP(&redisConfName, "env", "e", "", "sub directory inside of ./conf what has a region's config files")
 
 	// Here you will define your flags and configuration settings.
 
