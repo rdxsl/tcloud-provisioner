@@ -1,7 +1,14 @@
 {
-  "Region": "na-siliconvalley",
-  "Instance": 1,
-  "Memory": 1000,
-  "Volume": 25,
-  "Zone": "na-siliconvalley-1"
+  "region": "na-siliconvalley",
+  "instance": 1,
+  "zoneid":150001,
+  "typeid":2,
+  "memsize":1024,
+  "password":"somep12132",
+  "projectid":0,
+  "vport":6379,
+  "billingmode":0,
+  "billperiod":1,
+  "vpcid":"vpc-gfehxte9",
+  "subnetid":"subnet-fiyvufly"
 }

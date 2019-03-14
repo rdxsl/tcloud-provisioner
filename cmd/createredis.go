@@ -15,47 +15,29 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	tcloudredis "github.com/rdxsl/tcloud-provisioner/tencent-cloud/redis"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var redisConfName string
 
 func redisParseConfig(tm *tcloudredis.TcloudRedis) error {
-	switch viper.Get("Instance").(type) {
-	case float64:
-		tm.Instance = int64(viper.Get("Instance").(float64))
-	default:
-		return fmt.Errorf("mysql config needs to have 'Instance' with type 'int' without quotes, currently we have %+v\n", viper.Get("Instance"))
+	// Open our jsonFile
+	jsonFile, err := os.Open(redisConfName)
+	if err != nil {
+		fmt.Println(err)
+		return err
 	}
-	switch viper.Get("Memory").(type) {
-	case float64:
-		tm.Memory = int64(viper.Get("Memory").(float64))
-	default:
-		return fmt.Errorf("mysql config needs to have 'Memory' with type 'int' without quotes, currently we have %+v\n", viper.Get("Memory"))
-	}
-	switch viper.Get("Volume").(type) {
-	case float64:
-		tm.Volume = int64(viper.Get("Volume").(float64))
-	default:
-		return fmt.Errorf("mysql config needs to have 'Volume' with type 'int' without quotes, currently we have %+v\n", viper.Get("Volume"))
-	}
-	switch viper.Get("Region").(type) {
-	case string:
-		tm.Region = string(viper.Get("Region").(string))
-	default:
-		return fmt.Errorf("mysql config needs to have 'Region' with type 'string' with quotes, currently we have %+v\n", viper.Get("Region"))
-	}
-	switch viper.Get("Zone").(type) {
-	case string:
-		tm.Zone = string(viper.Get("Zone").(string))
-	default:
-		return fmt.Errorf("mysql config needs to have 'Zone' with type 'string' with quotes, currently we have %+v\n", viper.Get("Zone"))
-	}
-	return nil
+	// defer the closing of our jsonFile so that we can parse it later on
+	defer jsonFile.Close()
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+
+	return json.Unmarshal(byteValue, tm)
 }
 
 // createCmd represents the create command
@@ -69,22 +51,14 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		viper.SetConfigFile(redisConfName)
-		err := viper.ReadInConfig()
-		if err != nil {
-			fmt.Println(fmt.Errorf("Fatal error config file: %s \n", err))
-		}
 		var tr tcloudredis.TcloudRedis
-		err = redisParseConfig(&tr)
-		tr.Create()
+		err := redisParseConfig(&tr)
 
-		// if err == nil {
-		// 	tm.Create()
-		// } else {
-		// 	fmt.Println(err)
-		// }
-		// fmt.Println(viper.Get("Instance"))
-		// tcloudredis.TcloudRedis()
+		if err == nil {
+			tr.Create()
+		} else {
+			fmt.Println(err)
+		}
 	},
 }
 
