@@ -87,6 +87,12 @@
 			"revisionTime": "2016-02-12T03:18:39Z"
 		},
 		{
+			"checksumSHA1": "I7hloldMJZTqUx6hbVDp5nk9fZQ=",
+			"path": "github.com/pkg/errors",
+			"revision": "27936f6d90f9c8e1145f11ed52ffffbfdb9e0af7",
+			"revisionTime": "2019-02-27T00:00:51Z"
+		},
+		{
 			"checksumSHA1": "E1899TNqCHhCtr6+joW4YEldRuE=",
 			"path": "github.com/spf13/cast",
 			"revision": "27b586b42e29bec072fe7379259cc719e1289da6",
@@ -145,6 +151,12 @@
 			"path": "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile",
 			"revision": "a9b318452162086c6eb460fcadbac1e7612f4e13",
 			"revisionTime": "2019-03-12T06:53:10Z"
+		},
+		{
+			"checksumSHA1": "waPf4hURvvEOZymffTRT9vw1Kjo=",
+			"path": "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/redis/v20180412",
+			"revision": "e3c0f290e820a3180885b139e0af4d35a608d6e4",
+			"revisionTime": "2019-03-14T12:32:55Z"
 		},
 		{
 			"checksumSHA1": "csU3yh1Emel9jd6kWCwuT2vZ6hQ=",

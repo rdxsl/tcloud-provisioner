@@ -41,7 +41,7 @@ func NewCredential() (*common.Credential, *profile.ClientProfile) {
 	return credential, cpf
 }
 
-func (tr TcloudRedis) Create() {
+func (tr TcloudRedis) Create() error {
 	credential, cpf := NewCredential()
 	client, _ := redis.NewClient(credential, tr.Region, cpf)
 	request := redis.NewCreateInstancesRequest()
@@ -78,12 +78,14 @@ func (tr TcloudRedis) Create() {
 
 	if _, ok := err.(*errors.TencentCloudSDKError); ok {
 		fmt.Printf("An API error has returned: %s\n", err)
-		return
+		return err
 	}
 	// unexpected errors
 	if err != nil {
-		panic(err)
+		fmt.Printf("unexpected errors happend: %s\n", err)
+		return err
 	}
 	b, _ := json.Marshal(response.Response)
 	fmt.Printf("%s\n", b)
+	return nil
 }
