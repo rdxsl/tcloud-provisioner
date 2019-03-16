@@ -20,25 +20,23 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/pkg/errors"
 	tcloudredis "github.com/rdxsl/tcloud-provisioner/tencent-cloud/redis"
 	"github.com/spf13/cobra"
 )
 
 var redisConfName string
 
-func redisParseConfig(tm *tcloudredis.TcloudRedis) error {
-	// Open our jsonFile
-	jsonFile, err := os.Open(redisConfName)
+func createTCloudRedisFromConfig() (*tcloudredis.TCloudRedis, error) {
+	byteValue, err := ioutil.ReadFile(redisConfName)
 	if err != nil {
-		return err
+		return nil, errors.Wrapf(err, "error reading %s file", redisConfName)
 	}
-	// defer the closing of our jsonFile so that we can parse it later on
-	defer jsonFile.Close()
-	byteValue, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		return err
+	var tr tcloudredis.TCloudRedis
+	if err = json.Unmarshal(byteValue, &tr); err != nil {
+		return nil, errors.Wrapf(err, "error unmarshaling %s into TCloudRedis struct", redisConfName)
 	}
-	return json.Unmarshal(byteValue, tm)
+	return &tr, err
 }
 
 // createCmd represents the create command
@@ -52,21 +50,22 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var tr tcloudredis.TcloudRedis
-		err := redisParseConfig(&tr)
-
+		tr, err := createTCloudRedisFromConfig()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
 
-		err = tr.Create()
-
+		exists, err := tr.Create()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			// we might want to define exit code later
-			os.Exit(2)
+			fmt.Println("[ERROR] Failed to create Redis instance:", err)
+			os.Exit(1)
 		}
+		if exists {
+			fmt.Printf("[INFO] Redis instance %#v already exists\n", tr.InstanceName)
+			return
+		}
+		fmt.Printf("[INFO] Redis instance %#v successfully created\n", tr.InstanceName)
 	},
 }
 
