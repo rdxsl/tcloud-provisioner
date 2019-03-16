@@ -27,17 +27,14 @@ import (
 
 var mysqlConfigPath string
 
-func mysqlViperParseConfig() (*tcloudmysql.TcloudMySQL, error) {
-
-	bytes, err := ioutil.ReadFile(mysqlConfigPath)
+func createTCloudMySQLFromConfig() (*tcloudmysql.TCloudMySQL, error) {
+	byteValue, err := ioutil.ReadFile(mysqlConfigPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading %s file", mysqlConfigPath)
 	}
-
-	var tm tcloudmysql.TcloudMySQL
-	err = json.Unmarshal(bytes, &tm)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error marshaling %s into TcloudMySQL struct", mysqlConfigPath)
+	var tm tcloudmysql.TCloudMySQL
+	if err = json.Unmarshal(byteValue, &tm); err != nil {
+		return nil, errors.Wrapf(err, "error unmarshaling %s into TCloudMySQL struct", mysqlConfigPath)
 	}
 	return &tm, nil
 }
@@ -50,7 +47,7 @@ var createMysqlCmd = &cobra.Command{
 	~/.tcloud-provisioner
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		tm, err := mysqlViperParseConfig()
+		tm, err := createTCloudMySQLFromConfig()
 		if err != nil {
 			fmt.Println("Fatal error config file:", err)
 			os.Exit(1)
@@ -58,7 +55,7 @@ var createMysqlCmd = &cobra.Command{
 
 		exists, err := tm.Create()
 		if err != nil {
-			fmt.Println("[ERROR] Failed to create MySQL:", err)
+			fmt.Println("[ERROR] Failed to create MySQL instance:", err)
 			os.Exit(1)
 		}
 		if exists {

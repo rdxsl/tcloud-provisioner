@@ -52,11 +52,14 @@ func (tr TCloudRedis) Create() (exists bool, err error) {
 		return false, errors.Wrap(err, "new client error")
 	}
 
+	// NOTE(jeff): This is currently not working becuase the Tencent Cloud SDK
+	// does not pipe InstanceName to the API. Re-enable once that is hooked up
+	//
 	// Check if instance with the same name already exists
-	exists, err = checkInstanceExists(client, tr.InstanceName)
-	if err != nil || exists {
-		return exists, errors.Wrap(err, "failed to check instances")
-	}
+	// exists, err = checkInstanceExists(client, tr.InstanceName)
+	// if err != nil || exists {
+	// 	return exists, errors.Wrap(err, "failed to check instances")
+	// }
 
 	// Create redis
 	request := redis.NewCreateInstancesRequest()

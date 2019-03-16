@@ -20,28 +20,21 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/pkg/errors"
 	tcloudredis "github.com/rdxsl/tcloud-provisioner/tencent-cloud/redis"
 	"github.com/spf13/cobra"
 )
 
 var redisConfName string
 
-func redisParseConfig() (*tcloudredis.TCloudRedis, error) {
-	// Open our jsonFile
-	jsonFile, err := os.Open(redisConfName)
+func createTCloudRedisFromConfig() (*tcloudredis.TCloudRedis, error) {
+	byteValue, err := ioutil.ReadFile(redisConfName)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error reading %s file", redisConfName)
 	}
-	defer jsonFile.Close()
-
-	byteValue, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		return nil, err
-	}
-
 	var tr tcloudredis.TCloudRedis
 	if err = json.Unmarshal(byteValue, &tr); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error unmarshaling %s into TCloudRedis struct", redisConfName)
 	}
 	return &tr, err
 }
@@ -57,7 +50,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		tr, err := redisParseConfig()
+		tr, err := createTCloudRedisFromConfig()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -65,7 +58,7 @@ to quickly create a Cobra application.`,
 
 		exists, err := tr.Create()
 		if err != nil {
-			fmt.Println("[ERROR] Failed to create MySQL:", err)
+			fmt.Println("[ERROR] Failed to create Redis instance:", err)
 			os.Exit(1)
 		}
 		if exists {

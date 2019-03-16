@@ -12,7 +12,7 @@ import (
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 )
 
-type TcloudMySQL struct {
+type TCloudMySQL struct {
 	InstanceName string
 	Region       string
 	Zone         string
@@ -35,7 +35,7 @@ func NewCredential() (*common.Credential, *profile.ClientProfile) {
 	return credential, cpf
 }
 
-func (tm TcloudMySQL) Create() (bool, error) {
+func (tm TCloudMySQL) Create() (bool, error) {
 
 	// Init client
 	credential, cpf := NewCredential()
