@@ -12,11 +12,16 @@ import (
 )
 
 type TcloudMySQL struct {
-	Region   string
-	Zone     string
-	Instance int64
-	Memory   int64
-	Volume   int64
+	Region        string `json:"region"`
+	Zone          string `json:"zone"`
+	Instance      int64  `json:"instance"`
+	Memory        int64  `json:"memory"`
+	Volume        int64  `json:"volume"`
+	VpcId         string `json:"vpcid"`
+	SubnetId      string `json:"subnetid"`
+	Password      string `json:"password"`
+	InstanceName  string `json:"instancename"`
+	EngineVersion string `json:"engineversion"`
 }
 
 func NewCredential() (*common.Credential, *profile.ClientProfile) {
@@ -42,6 +47,11 @@ func (tm TcloudMySQL) Create() {
 	request.Memory = common.Int64Ptr(tm.Memory)
 	request.Volume = common.Int64Ptr(tm.Volume)
 	request.Zone = common.StringPtr(tm.Zone)
+	request.UniqVpcId = common.StringPtr(tm.VpcId)
+	request.UniqSubnetId = common.StringPtr(tm.SubnetId)
+	request.Password = common.StringPtr(tm.Password)
+	request.InstanceName = common.StringPtr(tm.InstanceName)
+	request.EngineVersion = common.StringPtr(tm.EngineVersion)
 	response, err := client.CreateDBInstanceHour(request)
 
 	if _, ok := err.(*errors.TencentCloudSDKError); ok {
