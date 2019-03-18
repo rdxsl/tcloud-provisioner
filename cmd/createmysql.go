@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	tcloudmysql "github.com/rdxsl/tcloud-provisioner/tencent-cloud/mysql"
@@ -26,17 +27,14 @@ import (
 
 var mysqlConfigPath string
 
-func mysqlViperParseConfig() (*tcloudmysql.TcloudMySQL, error) {
-
-	bytes, err := ioutil.ReadFile(mysqlConfigPath)
+func createTCloudMySQLFromConfig() (*tcloudmysql.TCloudMySQL, error) {
+	byteValue, err := ioutil.ReadFile(mysqlConfigPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading %s file", mysqlConfigPath)
 	}
-
-	var tm tcloudmysql.TcloudMySQL
-	err = json.Unmarshal(bytes, &tm)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error marshaling %s into TcloudMySQL struct", mysqlConfigPath)
+	var tm tcloudmysql.TCloudMySQL
+	if err = json.Unmarshal(byteValue, &tm); err != nil {
+		return nil, errors.Wrapf(err, "error unmarshaling %s into TCloudMySQL struct", mysqlConfigPath)
 	}
 	return &tm, nil
 }
@@ -49,20 +47,28 @@ var createMysqlCmd = &cobra.Command{
 	~/.tcloud-provisioner
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("reading tcloud mysql config from %s\n", mysqlConfigPath)
-		tm, err := mysqlViperParseConfig()
-		if err != nil { // Handle errors reading the config file
-			fmt.Println(fmt.Errorf("Fatal error config file: %s \n", err))
-			return
+		tm, err := createTCloudMySQLFromConfig()
+		if err != nil {
+			fmt.Println("Fatal error config file:", err)
+			os.Exit(1)
 		}
 
-		// TODO(jbennett): this function should return an error and log it
-		tm.Create()
+		exists, err := tm.Create()
+		if err != nil {
+			fmt.Println("[ERROR] Failed to create MySQL instance:", err)
+			os.Exit(1)
+		}
+		if exists {
+			fmt.Printf("[INFO] MySQL instance %#v already exists\n", tm.InstanceName)
+			return
+		}
+		fmt.Printf("[INFO] MySQL instance %#v successfully created\n", tm.InstanceName)
 	},
 }
 
 func init() {
 	mysqlCmd.AddCommand(createMysqlCmd)
+
 	createMysqlCmd.Flags().StringVarP(&mysqlConfigPath, "env", "e", "", "path to mysql config file")
 
 	// Here you will define your flags and configuration settings.

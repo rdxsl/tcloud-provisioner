@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
 	cdb "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cdb/v20170320"
 	common "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
-	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/errors"
+	tencentErrors "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/errors"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 )
 
-type TcloudMySQL struct {
+type TCloudMySQL struct {
 	Region        string `json:"region"`
 	Zone          string `json:"zone"`
 	Instance      int64  `json:"instance"`
@@ -38,10 +39,22 @@ func NewCredential() (*common.Credential, *profile.ClientProfile) {
 	return credential, cpf
 }
 
-func (tm TcloudMySQL) Create() {
-	credential, cpf := NewCredential()
-	client, _ := cdb.NewClient(credential, tm.Region, cpf)
+func (tm TCloudMySQL) Create() (bool, error) {
 
+	// Init client
+	credential, cpf := NewCredential()
+	client, err := cdb.NewClient(credential, tm.Region, cpf)
+	if err != nil {
+		return false, err
+	}
+
+	// Check if instance with the same name already exists
+	exists, err := checkInstanceExists(client, tm.InstanceName)
+	if err != nil || exists {
+		return exists, errors.Wrap(err, "failed to check instances")
+	}
+
+	// Create instance
 	request := cdb.NewCreateDBInstanceHourRequest()
 	request.GoodsNum = common.Int64Ptr(tm.Instance)
 	request.Memory = common.Int64Ptr(tm.Memory)
@@ -53,15 +66,41 @@ func (tm TcloudMySQL) Create() {
 	request.InstanceName = common.StringPtr(tm.InstanceName)
 	request.EngineVersion = common.StringPtr(tm.EngineVersion)
 	response, err := client.CreateDBInstanceHour(request)
-
-	if _, ok := err.(*errors.TencentCloudSDKError); ok {
-		fmt.Printf("An API error has returned: %s", err)
-		return
+	if _, ok := err.(*tencentErrors.TencentCloudSDKError); ok {
+		return false, errors.Wrap(err, "API error")
 	}
-	// unexpected errors
 	if err != nil {
-		panic(err)
+		return false, err
 	}
-	b, _ := json.Marshal(response.Response)
-	fmt.Printf("%s", b)
+
+	// Parse response
+	b, err := json.Marshal(response.Response)
+	if err != nil {
+		// Want to return nil right here, because the instance has already
+		// been successfully created
+		fmt.Println(err)
+		return false, nil
+	}
+	fmt.Printf("%v", string(b))
+	return false, nil
+}
+
+func checkInstanceExists(client *cdb.Client, name string) (bool, error) {
+	// https://intl.cloud.tencent.com/document/api/236/1266
+	req := cdb.NewDescribeDBInstancesRequest()
+	req.Limit = common.Uint64Ptr(100)
+	resp, err := client.DescribeDBInstances(req)
+	if err != nil {
+		return false, err
+	}
+
+	for _, item := range resp.Response.Items {
+		if item.InstanceName == nil {
+			continue
+		}
+		if *item.InstanceName == name {
+			return true, nil
+		}
+	}
+	return false, nil
 }
