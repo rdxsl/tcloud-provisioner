@@ -12,7 +12,7 @@ Run `go install github.com/rdxsl/tcloud-provisioner` and make sure `$GOPATH/bin`
 
 ## MySQL Idempotency
 
-The  `instancename` in `mysql.json` is Idempotency, this means if a MySQL instance in tcloud has the same `instancename`, this program will not create a duplicate instance with the same name.
+The  `instancename` in `mysql.json` is used for idempotency, this means if a MySQL instance in tcloud has the same `instancename`, this program will not create a duplicate instance with the same name.
 
 When you delete the mysql instance in tcloud, please make sure you
 release the deleted instance in
