@@ -14,4 +14,6 @@ Run `go install github.com/rdxsl/tcloud-provisioner` and make sure `$GOPATH/bin`
 
 The  `instancename` in `mysql.json` is Idempotency, this means if a MySQL instance in tcloud has the same `instancename`, this program will not create a duplicate instance with the same name.
 
-When you delete the mysql instance in tclound, please make sure you release the deleted instance in the `recyle-bin`. [link to screencap](media/mysql-recycle-bin.png)
+When you delete the mysql instance in tcloud, please make sure you
+release the deleted instance in the tcloud->mysql->`recyle-bin`.
+[link to screencap](media/mysql-recycle-bin.png)
