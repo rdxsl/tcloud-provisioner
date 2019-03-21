@@ -25,9 +25,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var mysqlConfigPath string
-
-func createTCloudMySQLFromConfig() (*tcloudmysql.TCloudMySQL, error) {
+func createTCloudMySQLFromConfig(mysqlConfigPath string) (*tcloudmysql.TCloudMySQL, error) {
 	byteValue, err := ioutil.ReadFile(mysqlConfigPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading %s file", mysqlConfigPath)
@@ -46,8 +44,9 @@ var createMysqlCmd = &cobra.Command{
 	Long: `create a MySQL DB in Tencent Cloud. The configuration is set in the following dir
 	~/.tcloud-provisioner
 	`,
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		tm, err := createTCloudMySQLFromConfig()
+		tm, err := createTCloudMySQLFromConfig(args[0])
 		if err != nil {
 			fmt.Println("Fatal error config file:", err)
 			os.Exit(1)
@@ -68,8 +67,6 @@ var createMysqlCmd = &cobra.Command{
 
 func init() {
 	mysqlCmd.AddCommand(createMysqlCmd)
-
-	createMysqlCmd.Flags().StringVarP(&mysqlConfigPath, "env", "e", "", "path to mysql config file")
 
 	// Here you will define your flags and configuration settings.
 
