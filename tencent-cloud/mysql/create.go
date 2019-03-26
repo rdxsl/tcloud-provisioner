@@ -23,6 +23,7 @@ type TCloudMySQL struct {
 	Password      string `json:"password"`
 	InstanceName  string `json:"instancename"`
 	EngineVersion string `json:"engineversion"`
+	ProjectId     int64  `json:"projectid"`
 }
 
 func NewCredential() (*common.Credential, *profile.ClientProfile) {
@@ -65,6 +66,7 @@ func (tm TCloudMySQL) Create() (bool, error) {
 	request.Password = common.StringPtr(tm.Password)
 	request.InstanceName = common.StringPtr(tm.InstanceName)
 	request.EngineVersion = common.StringPtr(tm.EngineVersion)
+	request.ProjectId = common.Int64Ptr(tm.ProjectId)
 	response, err := client.CreateDBInstanceHour(request)
 	if _, ok := err.(*tencentErrors.TencentCloudSDKError); ok {
 		return false, errors.Wrap(err, "API error")
