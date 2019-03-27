@@ -39,12 +39,10 @@ func createTCloudMySQLFromConfig(mysqlConfigPath string) (*tcloudmysql.TCloudMyS
 
 // createCmd represents the create command
 var createMysqlCmd = &cobra.Command{
-	Use:   "create",
-	Short: "create a MySQL DB in Tencent Cloud",
-	Long: `create a MySQL DB in Tencent Cloud. The configuration is set in the following dir
-	~/.tcloud-provisioner
-	`,
-	Args: cobra.MinimumNArgs(1),
+	Use:   "create <config.json>",
+	Short: "Create a MySQL DB instance in Tencent Cloud",
+	Long:  "Create a MySQL DB instance in Tencent Cloud",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		tm, err := createTCloudMySQLFromConfig(args[0])
 		if err != nil {
@@ -67,14 +65,4 @@ var createMysqlCmd = &cobra.Command{
 
 func init() {
 	mysqlCmd.AddCommand(createMysqlCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// createCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// createCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
