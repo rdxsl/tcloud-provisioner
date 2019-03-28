@@ -197,7 +197,12 @@ func findRecentlyCreatedRedisInstance(client *redis.Client) (*redis.InstanceSet,
 		return nil, err
 	}
 
-	for _, item := range resp.Response.InstanceSet {
+	shanghaiLoc, _ := time.LoadLocation("Asia/Shanghai")
+
+	// Go in-reverse order since newer items are likely
+	// to be at the end of this API response
+	for i := len(resp.Response.InstanceSet) - 1; i >= 0; i-- {
+		item := resp.Response.InstanceSet[i]
 		if item.InstanceId == nil || item.InstanceName == nil {
 			continue
 		}
@@ -211,10 +216,12 @@ func findRecentlyCreatedRedisInstance(client *redis.Client) (*redis.InstanceSet,
 		var isRecentlyCreated bool
 		createdRaw := *item.Createtime
 		if createdRaw == "0000-00-00 00:00:00" {
+
+			// this happens when Redis is still initializing
 			isRecentlyCreated = true
 			fmt.Printf("[INFO] Found Recently Created Instance with zero time: %v %v\n", *item.InstanceId, createdRaw)
+
 		} else {
-			shanghaiLoc, _ := time.LoadLocation("Asia/Shanghai")
 			created, err := time.ParseInLocation("2006-01-02 15:04:05", createdRaw, shanghaiLoc)
 			if err != nil {
 				return nil, err
