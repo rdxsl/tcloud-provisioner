@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	redis "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/redis/v20180412"
 
@@ -14,8 +15,8 @@ import (
 )
 
 type TCloudRedis struct {
+	InstanceName string `json:"instancename"`
 	Region       string `json:"region"`
-	InstanceName string `json:"instanceName"`
 	Instance     uint64 `json:"instance"`
 	ZoneId       uint64 `json:"zoneid"`
 	TypeId       uint64 `json:"typeid"`
@@ -27,6 +28,16 @@ type TCloudRedis struct {
 	Period       uint64 `json:"billperiod"`
 	VpcId        string `json:"vpcid"`
 	SubnetId     string `json:"subnetid"`
+}
+
+func (tr TCloudRedis) Validate() error {
+	if tr.InstanceName == "" {
+		return errors.New("instancename cannot be empty")
+	}
+	if len(tr.InstanceName) > 36 {
+		return errors.New("instancename is too long, expected 1-36 chars https://cloud.tencent.com/document/api/239/8431")
+	}
+	return nil
 }
 
 func NewCredential() (*common.Credential, *profile.ClientProfile) {
@@ -56,10 +67,10 @@ func (tr TCloudRedis) Create() (exists bool, err error) {
 	// does not pipe InstanceName to the API. Re-enable once that is hooked up
 	//
 	// Check if instance with the same name already exists
-	// exists, err = checkInstanceExists(client, tr.InstanceName)
-	// if err != nil || exists {
-	// 	return exists, errors.Wrap(err, "failed to check instances")
-	// }
+	exists, err = checkInstanceExists(client, tr.InstanceName)
+	if err != nil || exists {
+		return exists, errors.Wrap(err, "failed to check instances")
+	}
 
 	// Create redis
 	request := redis.NewCreateInstancesRequest()
@@ -92,30 +103,46 @@ func (tr TCloudRedis) Create() (exists bool, err error) {
 	// var SGroup = []string {"sg-clygup2w"}
 	// request.SecurityGroupIdList = common.StringPtrs(SGroup)
 
-	response, err := client.CreateInstances(request)
-	if _, ok := err.(*tencentErrors.TencentCloudSDKError); ok {
-		return false, errors.Wrap(err, "API error")
-	}
+	// Create instance
+	resp, err := client.CreateInstances(request)
 	if err != nil {
+		if _, ok := err.(*tencentErrors.TencentCloudSDKError); ok {
+			return false, errors.Wrap(err, "API error")
+		}
 		return false, err
 	}
 
 	// Parse response
-	b, err := json.Marshal(response.Response)
+	b, err := json.Marshal(resp.Response)
 	if err != nil {
 		// Want to return nil right here, because the instance has already
 		// been successfully created
 		fmt.Println(err)
 		return false, nil
 	}
-	fmt.Printf("%v", string(b))
+	fmt.Printf("[INFO] Created API Response: %v\n", string(b))
+
+	// NOTE(jehwang): Heuristically find instances created
+	instance, err := findRecentlyCreatedRedisInstance(client)
+	if err != nil {
+		fmt.Println("[WARN] Failed to update Redis instance name. Could not find recently created instance:", err)
+		return false, nil
+	}
+	id := *instance.InstanceId
+
+	// Update name
+	if err := updateInstanceName(client, id, tr.InstanceName); err != nil {
+		fmt.Println("[WARN] Failed to update Redis instance name:", id, tr.InstanceName, err)
+	}
 	return false, nil
 }
 
 func checkInstanceExists(client *redis.Client, name string) (bool, error) {
+
 	// https://intl.cloud.tencent.com/document/api/239/1384
 	req := redis.NewDescribeInstancesRequest()
 	req.Limit = common.Uint64Ptr(100)
+	req.InstanceName = &name
 	resp, err := client.DescribeInstances(req)
 	if err != nil {
 		return false, err
@@ -130,4 +157,77 @@ func checkInstanceExists(client *redis.Client, name string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// findRecentlyCreatedRedisInstance looks for an instance that was recently
+// created using the criteria:
+//	- InstanceName == InstanceId
+//	- Createtime +/- 5min, or Createtime is zero
+//
+// Also note Createtime is given back in Asia/Shanghai timezone.
+func findRecentlyCreatedRedisInstance(client *redis.Client) (*redis.InstanceSet, error) {
+
+	// https://intl.cloud.tencent.com/document/api/239/1384
+	req := redis.NewDescribeInstancesRequest()
+	req.Limit = common.Uint64Ptr(100)
+	resp, err := client.DescribeInstances(req)
+	if err != nil {
+		return nil, err
+	}
+
+	shanghaiLoc, _ := time.LoadLocation("Asia/Shanghai")
+
+	// Go in-reverse order since newer items are likely
+	// to be at the end of this API response
+	for i := len(resp.Response.InstanceSet) - 1; i >= 0; i-- {
+		item := resp.Response.InstanceSet[i]
+		if item.InstanceId == nil || item.InstanceName == nil {
+			continue
+		}
+
+		// Look for instances that have id set to name (not tagged with name yet)
+		if *item.InstanceName != *item.InstanceId {
+			continue
+		}
+
+		// And recently created within the last 5 minutes or created time set to zero
+		var isRecentlyCreated bool
+		createdRaw := *item.Createtime
+		if createdRaw == "0000-00-00 00:00:00" {
+
+			// this happens when Redis is still initializing
+			isRecentlyCreated = true
+			fmt.Printf("[DEBUG] Found Recently Created Instance with zero time: %v %v\n", *item.InstanceId, createdRaw)
+
+		} else {
+			created, err := time.ParseInLocation("2006-01-02 15:04:05", createdRaw, shanghaiLoc)
+			if err != nil {
+				return nil, err
+			}
+			dur := time.Since(created)
+			if dur > -5*time.Minute && dur < 5*time.Minute {
+				fmt.Printf("[DEBUG] Found Recently Created Instance < 5min: %v %v\n", *item.InstanceId, dur)
+				isRecentlyCreated = true
+			}
+		}
+		if isRecentlyCreated {
+			return item, nil
+		}
+	}
+	return nil, errors.New("no matching criteria")
+}
+
+func updateInstanceName(client *redis.Client, id, name string) error {
+	// https://cloud.tencent.com/document/api/239/8431
+	req := redis.NewModifyInstanceRequest()
+	operation := "rename"
+	req.Operation = &operation
+	req.InstanceId = &id
+	req.InstanceName = &name
+	_, err := client.ModifyInstance(req)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("[INFO] Updated Redis instance: %v with name %v\n", id, name)
+	return nil
 }

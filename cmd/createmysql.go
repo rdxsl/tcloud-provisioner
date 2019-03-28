@@ -34,6 +34,9 @@ func createTCloudMySQLFromConfig(mysqlConfigPath string) (*tcloudmysql.TCloudMyS
 	if err = json.Unmarshal(byteValue, &tm); err != nil {
 		return nil, errors.Wrapf(err, "error unmarshaling %s into TCloudMySQL struct", mysqlConfigPath)
 	}
+	if err = tm.Validate(); err != nil {
+		return nil, errors.Wrap(err, "config invalid")
+	}
 	return &tm, nil
 }
 
