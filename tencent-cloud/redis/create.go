@@ -122,13 +122,6 @@ func (tr TCloudRedis) Create() (exists bool, err error) {
 	}
 	fmt.Printf("[INFO] Created API Response: %v\n", string(b))
 
-	// // Find Instances Created
-	// ids, err := findRedisIDByDealID(client, *resp.Response.DealId)
-	// if err != nil {
-	// 	fmt.Println("[WARN] Failed to find instance by deal id:", *resp.Response.DealId)
-	// 	return false, nil
-	// }
-
 	// NOTE(jehwang): Heuristically find instances created
 	instance, err := findRecentlyCreatedRedisInstance(client)
 	if err != nil {
@@ -165,21 +158,6 @@ func checkInstanceExists(client *redis.Client, name string) (bool, error) {
 	}
 	return false, nil
 }
-
-// func findRedisIDByDealID(client *redis.Client, dealID string) (ids []string, err error) {
-// 	req := redis.NewDescribeInstanceDealDetailRequest()
-// 	req.DealIds = append(req.DealIds, &dealID)
-// 	resp, err := client.DescribeInstanceDealDetail(req)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	for _, details := range resp.Response.DealDetails {
-// 		for _, instanceID := range details.InstanceIds {
-// 			ids = append(ids, *instanceID)
-// 		}
-// 	}
-// 	return ids, nil
-// }
 
 // findRecentlyCreatedRedisInstance looks for an instance that was recently
 // created using the criteria:
