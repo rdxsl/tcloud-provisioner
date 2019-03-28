@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/k0kubun/pp"
 	redis "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/redis/v20180412"
 
 	"github.com/pkg/errors"
@@ -131,18 +130,17 @@ func (tr TCloudRedis) Create() (exists bool, err error) {
 	// }
 
 	// NOTE(jehwang): Heuristically find instances created
-	ids, err := findRecentlyCreatedRedisInstance(client)
+	instance, err := findRecentlyCreatedRedisInstance(client)
 	if err != nil {
-		fmt.Println("[ERROR] Failed to find recently created instance:", err)
+		fmt.Println("[ERROR] Failed to update Redis instance name. Could not find recently created instance:", err)
 		return false, nil
 	}
+	id := *instance.InstanceId
+	fmt.Printf("[INFO] -- IP Address: %v\n", *instance.WanIp)
 
 	// Update name
-	for _, id := range ids {
-		if err := updateInstanceName(client, id, tr.InstanceName); err != nil {
-			fmt.Println("[ERROR] Failed to update instance name:", id, tr.InstanceName, err)
-			continue
-		}
+	if err := updateInstanceName(client, id, tr.InstanceName); err != nil {
+		fmt.Println("[ERROR] Failed to update Redis instance name:", id, tr.InstanceName, err)
 	}
 	return false, nil
 }
@@ -153,12 +151,10 @@ func checkInstanceExists(client *redis.Client, name string) (bool, error) {
 	req := redis.NewDescribeInstancesRequest()
 	req.Limit = common.Uint64Ptr(100)
 	req.InstanceName = &name
-	pp.Println(req)
 	resp, err := client.DescribeInstances(req)
 	if err != nil {
 		return false, err
 	}
-	pp.Println(resp)
 
 	for _, item := range resp.Response.InstanceSet {
 		if item.InstanceName == nil {
@@ -186,7 +182,14 @@ func checkInstanceExists(client *redis.Client, name string) (bool, error) {
 // 	return ids, nil
 // }
 
-func findRecentlyCreatedRedisInstance(client *redis.Client) (ids []string, err error) {
+// findRecentlyCreatedRedisInstance looks for an instance that was recently
+// created using the criteria:
+//	- InstanceName == InstanceId
+//	- Createtime +/- 5min, or Createtime is zero
+//
+// Also note Createtime is given back in Asia/Shanghai timezone.
+func findRecentlyCreatedRedisInstance(client *redis.Client) (*redis.InstanceSet, error) {
+
 	// https://intl.cloud.tencent.com/document/api/239/1384
 	req := redis.NewDescribeInstancesRequest()
 	req.Limit = common.Uint64Ptr(100)
@@ -205,7 +208,7 @@ func findRecentlyCreatedRedisInstance(client *redis.Client) (ids []string, err e
 			continue
 		}
 
-		// And recently created within the last 5 minutes
+		// And recently created within the last 5 minutes or created time set to zero
 		var isRecentlyCreated bool
 		createdRaw := *item.Createtime
 		if createdRaw == "0000-00-00 00:00:00" {
@@ -218,16 +221,16 @@ func findRecentlyCreatedRedisInstance(client *redis.Client) (ids []string, err e
 				return nil, err
 			}
 			dur := time.Since(created)
-			if (dur < 0 && dur > -5*time.Minute) || (dur > 0 && dur < 5*time.Minute) {
+			if dur > -5*time.Minute && dur < 5*time.Minute {
 				fmt.Printf("[INFO] Found Recently Created Instance < 5min: %v %v\n", *item.InstanceId, dur)
 				isRecentlyCreated = true
 			}
 		}
 		if isRecentlyCreated {
-			ids = append(ids, *item.InstanceId)
+			return item, nil
 		}
 	}
-	return ids, nil
+	return nil, errors.New("no matching criteria")
 }
 
 func updateInstanceName(client *redis.Client, id, name string) error {
@@ -241,6 +244,6 @@ func updateInstanceName(client *redis.Client, id, name string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("[INFO] Updated instance name: %v with name %v\n", id, name)
+	fmt.Printf("[INFO] Updated Redis instance: %v with name %v\n", id, name)
 	return nil
 }
