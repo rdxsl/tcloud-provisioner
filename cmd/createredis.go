@@ -34,14 +34,17 @@ func createTCloudRedisFromConfig(redisConfName string) (*tcloudredis.TCloudRedis
 	if err = json.Unmarshal(byteValue, &tr); err != nil {
 		return nil, errors.Wrapf(err, "error unmarshaling %s into TCloudRedis struct", redisConfName)
 	}
+	if err = tr.Validate(); err != nil {
+		return nil, errors.Wrap(err, "config invalid")
+	}
 	return &tr, err
 }
 
 // createCmd represents the create command
 var createRedisCmd = &cobra.Command{
-	Use:   "create <config.json>",
-	Short: "Create a Redist instance in Tencent Cloud",
-	Long:  "Create a Redist instance in Tencent Cloud",
+	Use:   "create",
+	Short: "Create a Redis instance in Tencent Cloud",
+	Long:  "Create a Redis instance in Tencent Cloud",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		tr, err := createTCloudRedisFromConfig(args[0])

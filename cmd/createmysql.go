@@ -34,12 +34,15 @@ func createTCloudMySQLFromConfig(mysqlConfigPath string) (*tcloudmysql.TCloudMyS
 	if err = json.Unmarshal(byteValue, &tm); err != nil {
 		return nil, errors.Wrapf(err, "error unmarshaling %s into TCloudMySQL struct", mysqlConfigPath)
 	}
+	if err = tm.Validate(); err != nil {
+		return nil, errors.Wrap(err, "config invalid")
+	}
 	return &tm, nil
 }
 
 // createCmd represents the create command
 var createMysqlCmd = &cobra.Command{
-	Use:   "create <config.json>",
+	Use:   "create",
 	Short: "Create a MySQL DB instance in Tencent Cloud",
 	Long:  "Create a MySQL DB instance in Tencent Cloud",
 	Args:  cobra.ExactArgs(1),

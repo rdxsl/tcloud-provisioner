@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/k0kubun/pp"
 	redis "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/redis/v20180412"
 
 	"github.com/pkg/errors"
@@ -14,8 +16,8 @@ import (
 )
 
 type TCloudRedis struct {
+	InstanceName string `json:"instancename"`
 	Region       string `json:"region"`
-	InstanceName string `json:"instanceName"`
 	Instance     uint64 `json:"instance"`
 	ZoneId       uint64 `json:"zoneid"`
 	TypeId       uint64 `json:"typeid"`
@@ -27,6 +29,16 @@ type TCloudRedis struct {
 	Period       uint64 `json:"billperiod"`
 	VpcId        string `json:"vpcid"`
 	SubnetId     string `json:"subnetid"`
+}
+
+func (tr TCloudRedis) Validate() error {
+	if tr.InstanceName == "" {
+		return errors.New("instancename cannot be empty")
+	}
+	if len(tr.InstanceName) > 36 {
+		return errors.New("instancename is too long, expected 1-36 chars https://cloud.tencent.com/document/api/239/8431")
+	}
+	return nil
 }
 
 func NewCredential() (*common.Credential, *profile.ClientProfile) {
@@ -56,10 +68,10 @@ func (tr TCloudRedis) Create() (exists bool, err error) {
 	// does not pipe InstanceName to the API. Re-enable once that is hooked up
 	//
 	// Check if instance with the same name already exists
-	// exists, err = checkInstanceExists(client, tr.InstanceName)
-	// if err != nil || exists {
-	// 	return exists, errors.Wrap(err, "failed to check instances")
-	// }
+	exists, err = checkInstanceExists(client, tr.InstanceName)
+	if err != nil || exists {
+		return exists, errors.Wrap(err, "failed to check instances")
+	}
 
 	// Create redis
 	request := redis.NewCreateInstancesRequest()
@@ -92,34 +104,61 @@ func (tr TCloudRedis) Create() (exists bool, err error) {
 	// var SGroup = []string {"sg-clygup2w"}
 	// request.SecurityGroupIdList = common.StringPtrs(SGroup)
 
-	response, err := client.CreateInstances(request)
-	if _, ok := err.(*tencentErrors.TencentCloudSDKError); ok {
-		return false, errors.Wrap(err, "API error")
-	}
+	// Create instance
+	resp, err := client.CreateInstances(request)
 	if err != nil {
+		if _, ok := err.(*tencentErrors.TencentCloudSDKError); ok {
+			return false, errors.Wrap(err, "API error")
+		}
 		return false, err
 	}
 
 	// Parse response
-	b, err := json.Marshal(response.Response)
+	b, err := json.Marshal(resp.Response)
 	if err != nil {
 		// Want to return nil right here, because the instance has already
 		// been successfully created
 		fmt.Println(err)
 		return false, nil
 	}
-	fmt.Printf("%v", string(b))
+	fmt.Printf("[INFO] Created API Response: %v\n", string(b))
+
+	// // Find Instances Created
+	// ids, err := findRedisIDByDealID(client, *resp.Response.DealId)
+	// if err != nil {
+	// 	fmt.Println("[ERROR] Failed to find instance by deal id:", *resp.Response.DealId)
+	// 	return false, nil
+	// }
+
+	// NOTE(jehwang): Heuristically find instances created
+	ids, err := findRecentlyCreatedRedisInstance(client)
+	if err != nil {
+		fmt.Println("[ERROR] Failed to find recently created instance:", err)
+		return false, nil
+	}
+
+	// Update name
+	for _, id := range ids {
+		if err := updateInstanceName(client, id, tr.InstanceName); err != nil {
+			fmt.Println("[ERROR] Failed to update instance name:", id, tr.InstanceName, err)
+			continue
+		}
+	}
 	return false, nil
 }
 
 func checkInstanceExists(client *redis.Client, name string) (bool, error) {
+
 	// https://intl.cloud.tencent.com/document/api/239/1384
 	req := redis.NewDescribeInstancesRequest()
 	req.Limit = common.Uint64Ptr(100)
+	req.InstanceName = &name
+	pp.Println(req)
 	resp, err := client.DescribeInstances(req)
 	if err != nil {
 		return false, err
 	}
+	pp.Println(resp)
 
 	for _, item := range resp.Response.InstanceSet {
 		if item.InstanceName == nil {
@@ -130,4 +169,78 @@ func checkInstanceExists(client *redis.Client, name string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// func findRedisIDByDealID(client *redis.Client, dealID string) (ids []string, err error) {
+// 	req := redis.NewDescribeInstanceDealDetailRequest()
+// 	req.DealIds = append(req.DealIds, &dealID)
+// 	resp, err := client.DescribeInstanceDealDetail(req)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	for _, details := range resp.Response.DealDetails {
+// 		for _, instanceID := range details.InstanceIds {
+// 			ids = append(ids, *instanceID)
+// 		}
+// 	}
+// 	return ids, nil
+// }
+
+func findRecentlyCreatedRedisInstance(client *redis.Client) (ids []string, err error) {
+	// https://intl.cloud.tencent.com/document/api/239/1384
+	req := redis.NewDescribeInstancesRequest()
+	req.Limit = common.Uint64Ptr(100)
+	resp, err := client.DescribeInstances(req)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range resp.Response.InstanceSet {
+		if item.InstanceId == nil || item.InstanceName == nil {
+			continue
+		}
+
+		// Look for instances that have id set to name (not tagged with name yet)
+		if *item.InstanceName != *item.InstanceId {
+			continue
+		}
+
+		// And recently created within the last 5 minutes
+		var isRecentlyCreated bool
+		createdRaw := *item.Createtime
+		if createdRaw == "0000-00-00 00:00:00" {
+			isRecentlyCreated = true
+			fmt.Printf("[INFO] Found Recently Created Instance with zero time: %v %v\n", *item.InstanceId, createdRaw)
+		} else {
+			shanghaiLoc, _ := time.LoadLocation("Asia/Shanghai")
+			created, err := time.ParseInLocation("2006-01-02 15:04:05", createdRaw, shanghaiLoc)
+			if err != nil {
+				return nil, err
+			}
+			dur := time.Since(created)
+			if (dur < 0 && dur > -5*time.Minute) || (dur > 0 && dur < 5*time.Minute) {
+				fmt.Printf("[INFO] Found Recently Created Instance < 5min: %v %v\n", *item.InstanceId, dur)
+				isRecentlyCreated = true
+			}
+		}
+		if isRecentlyCreated {
+			ids = append(ids, *item.InstanceId)
+		}
+	}
+	return ids, nil
+}
+
+func updateInstanceName(client *redis.Client, id, name string) error {
+	// https://cloud.tencent.com/document/api/239/8431
+	req := redis.NewModifyInstanceRequest()
+	operation := "rename"
+	req.Operation = &operation
+	req.InstanceId = &id
+	req.InstanceName = &name
+	_, err := client.ModifyInstance(req)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("[INFO] Updated instance name: %v with name %v\n", id, name)
+	return nil
 }

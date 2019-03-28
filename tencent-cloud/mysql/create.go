@@ -26,6 +26,13 @@ type TCloudMySQL struct {
 	ProjectId     int64  `json:"projectid"`
 }
 
+func (tm TCloudMySQL) Validate() error {
+	if tm.InstanceName == "" {
+		return errors.New("instancename cannot be empty")
+	}
+	return nil
+}
+
 func NewCredential() (*common.Credential, *profile.ClientProfile) {
 	credential := common.NewCredential(
 		os.Getenv("TENCENTCLOUD_SECRET_ID"),
@@ -83,7 +90,7 @@ func (tm TCloudMySQL) Create() (bool, error) {
 		fmt.Println(err)
 		return false, nil
 	}
-	fmt.Printf("%v", string(b))
+	fmt.Printf("[INFO] API Response: %v\n", string(b))
 	return false, nil
 }
 
