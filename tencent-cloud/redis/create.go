@@ -136,7 +136,6 @@ func (tr TCloudRedis) Create() (exists bool, err error) {
 		return false, nil
 	}
 	id := *instance.InstanceId
-	fmt.Printf("[INFO] -- IP Address: %v\n", *instance.WanIp)
 
 	// Update name
 	if err := updateInstanceName(client, id, tr.InstanceName); err != nil {

@@ -42,7 +42,7 @@ func createTCloudRedisFromConfig(redisConfName string) (*tcloudredis.TCloudRedis
 
 // createCmd represents the create command
 var createRedisCmd = &cobra.Command{
-	Use:   "create",
+	Use:   "create <config.json>",
 	Short: "Create a Redis instance in Tencent Cloud",
 	Long:  "Create a Redis instance in Tencent Cloud",
 	Args:  cobra.ExactArgs(1),

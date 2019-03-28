@@ -42,7 +42,7 @@ func createTCloudMySQLFromConfig(mysqlConfigPath string) (*tcloudmysql.TCloudMyS
 
 // createCmd represents the create command
 var createMysqlCmd = &cobra.Command{
-	Use:   "create",
+	Use:   "create <config.json>",
 	Short: "Create a MySQL DB instance in Tencent Cloud",
 	Long:  "Create a MySQL DB instance in Tencent Cloud",
 	Args:  cobra.ExactArgs(1),
