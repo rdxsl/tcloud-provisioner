@@ -1,12 +1,12 @@
 {
-  "Region": "na-siliconvalley",
-  "Instance": 1,
-  "Memory": 1000,
-  "Volume": 25,
-  "Zone": "na-siliconvalley-2",
+  "instancename":"jackdev1",
+  "region": "na-siliconvalley",
+  "instance": 1,
+  "memory": 1000,
+  "volume": 25,
+  "zone": "na-siliconvalley-2",
   "vpcid":"",
   "subnetid":"",
   "password":"",
-  "instancename":"",
   "engineversion":"5.7"
 }
