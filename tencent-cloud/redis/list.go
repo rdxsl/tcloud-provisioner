@@ -1,7 +1,9 @@
 package redis
 
 import (
-	"github.com/k0kubun/pp"
+	"encoding/json"
+	"fmt"
+
 	redis "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/redis/v20180412"
 
 	common "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
@@ -24,6 +26,11 @@ func List(region string) error {
 	if err != nil {
 		return err
 	}
-	pp.Println(resp)
+
+	data, err := json.MarshalIndent(resp, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
 	return nil
 }
