@@ -125,21 +125,21 @@ func (tr TCloudRedis) Create() (exists bool, err error) {
 	// // Find Instances Created
 	// ids, err := findRedisIDByDealID(client, *resp.Response.DealId)
 	// if err != nil {
-	// 	fmt.Println("[ERROR] Failed to find instance by deal id:", *resp.Response.DealId)
+	// 	fmt.Println("[WARN] Failed to find instance by deal id:", *resp.Response.DealId)
 	// 	return false, nil
 	// }
 
 	// NOTE(jehwang): Heuristically find instances created
 	instance, err := findRecentlyCreatedRedisInstance(client)
 	if err != nil {
-		fmt.Println("[ERROR] Failed to update Redis instance name. Could not find recently created instance:", err)
+		fmt.Println("[WARN] Failed to update Redis instance name. Could not find recently created instance:", err)
 		return false, nil
 	}
 	id := *instance.InstanceId
 
 	// Update name
 	if err := updateInstanceName(client, id, tr.InstanceName); err != nil {
-		fmt.Println("[ERROR] Failed to update Redis instance name:", id, tr.InstanceName, err)
+		fmt.Println("[WARN] Failed to update Redis instance name:", id, tr.InstanceName, err)
 	}
 	return false, nil
 }
@@ -219,7 +219,7 @@ func findRecentlyCreatedRedisInstance(client *redis.Client) (*redis.InstanceSet,
 
 			// this happens when Redis is still initializing
 			isRecentlyCreated = true
-			fmt.Printf("[INFO] Found Recently Created Instance with zero time: %v %v\n", *item.InstanceId, createdRaw)
+			fmt.Printf("[DEBUG] Found Recently Created Instance with zero time: %v %v\n", *item.InstanceId, createdRaw)
 
 		} else {
 			created, err := time.ParseInLocation("2006-01-02 15:04:05", createdRaw, shanghaiLoc)
@@ -228,7 +228,7 @@ func findRecentlyCreatedRedisInstance(client *redis.Client) (*redis.InstanceSet,
 			}
 			dur := time.Since(created)
 			if dur > -5*time.Minute && dur < 5*time.Minute {
-				fmt.Printf("[INFO] Found Recently Created Instance < 5min: %v %v\n", *item.InstanceId, dur)
+				fmt.Printf("[DEBUG] Found Recently Created Instance < 5min: %v %v\n", *item.InstanceId, dur)
 				isRecentlyCreated = true
 			}
 		}
